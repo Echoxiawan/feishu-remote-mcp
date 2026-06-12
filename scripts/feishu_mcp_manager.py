@@ -214,10 +214,12 @@ def authorize_new_token(credentials: dict[str, str], timeout: int) -> dict[str, 
     return normalize_token_data(data)
 
 
-def refresh_token(refresh_token_value: str) -> dict[str, Any]:
+def refresh_token(credentials: dict[str, str], refresh_token_value: str) -> dict[str, Any]:
+    app_access_token = get_app_access_token(credentials)
     result = request_json(
         "https://open.feishu.cn/open-apis/authen/v1/oidc/refresh_access_token",
         {"grant_type": "refresh_token", "refresh_token": refresh_token_value},
+        {"Authorization": f"Bearer {app_access_token}"},
     )
     data = result.get("data") or {}
     if not data.get("access_token") or not data.get("refresh_token"):
@@ -240,10 +242,11 @@ def normalize_token_data(data: dict[str, Any]) -> dict[str, Any]:
 
 def get_fresh_token(force_reauth: bool, timeout: int, allow_interactive: bool) -> dict[str, Any]:
     existing = read_json(TOKEN_FILE)
+    credentials = resolve_credentials()
     if not force_reauth and existing.get("refresh_token"):
         try:
             log("正在刷新飞书 User Access Token。")
-            token_data = refresh_token(str(existing["refresh_token"]))
+            token_data = refresh_token(credentials, str(existing["refresh_token"]))
             write_json_private(TOKEN_FILE, token_data)
             return token_data
         except Exception as exc:
@@ -252,7 +255,6 @@ def get_fresh_token(force_reauth: bool, timeout: int, allow_interactive: bool) -
     if not allow_interactive:
         raise RuntimeError("无法静默刷新 token，请先运行 prepare 完成浏览器授权。")
 
-    credentials = resolve_credentials()
     token_data = authorize_new_token(credentials, timeout)
     write_json_private(TOKEN_FILE, token_data)
     return token_data
