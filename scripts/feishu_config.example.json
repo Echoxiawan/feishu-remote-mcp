@@ -1,0 +1,5 @@
+{
+  "app_id": "替换为飞书APP_ID",
+  "app_secret": "替换为飞书APP_SECRET",
+  "redirect_uri": "http://localhost:8080/callback"
+}
