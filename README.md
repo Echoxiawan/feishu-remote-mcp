@@ -2,7 +2,7 @@
 
 为 Claude Code、Cursor、Kiro、Codex 配置飞书 Remote MCP，支持 User Access Token 自动刷新、浏览器重授权、多客户端 MCP 配置幂等写入。
 
-> 仓库地址：[https://github.com/Echoxiawan/feishu-remote-mcp](https://github.com/Echoxiawan/feishu-remote-mcp)
+> 仓库地址：[https://github.com/Ec![img.png](img.png)hoxiawan/feishu-remote-mcp](https://github.com/Echoxiawan/feishu-remote-mcp)
 
 ---
 
