@@ -1,62 +1,56 @@
 ---
 name: feishu-remote-mcp
-description: Configure and use Feishu/Lark Remote MCP across Claude Code, Cursor, Kiro, and Codex with automatic User Access Token refresh, browser reauthorization when refresh tokens expire, and idempotent MCP config updates. Use when an agent needs Feishu cloud document MCP tools, needs to refresh or reissue X-Lark-MCP-UAT, or needs to generate/update MCP config for Feishu Remote MCP.
+description: 配置并使用飞书/Feishu/Lark Remote MCP，支持飞书云文档、多维表格、知识库、Wiki 等工具访问。触发条件：用户提到飞书文档/飞书 MCP/飞书工具，或需要读写飞书云文档、多维表格、知识库，或需要刷新 X-Lark-MCP-UAT token，或需要为 Claude Code/Cursor/Kiro/Codex 生成飞书 MCP 配置。自动处理 token refresh 和浏览器重新授权，幂等更新 MCP 配置。
 ---
 
 # 飞书 Remote MCP
 
-## 核心规则
+> 所有路径均相对于本 SKILL.md 所在目录。查看完整命令选项：`python3 scripts/feishu_mcp_manager.py --help`
 
-使用飞书 MCP 前，先运行本 skill 的脚本刷新 token 并同步 MCP 配置。脚本会优先 refresh；refresh 失效时自动打开浏览器重新授权；配置已存在时只更新对应 `feishu` 条目，不重复添加。
+## 决策树
 
-安装或迁移本 skill 时，先读取 `INSTALL.md`。
-
-```bash
-python3 feishu-remote-mcp/scripts/feishu_mcp_manager.py prepare --clients all --scope project
+```
+需要使用飞书 MCP？
+├── 首次使用 / 没有凭证 → 读取 INSTALL.md，按流程安装
+├── 有凭证，需要刷新 token 或更新 MCP 配置 → 执行"每次使用前"命令
+└── token 过期 / 浏览器重新授权 → 执行"强制重新授权"命令
 ```
 
-## 首次凭证
-
-如果用户已经提供飞书应用凭证，则先保存到脚本目录配置文件：
+## 每次使用前
 
 ```bash
-python3 feishu-remote-mcp/scripts/feishu_mcp_manager.py save-credentials \
-  --app-id "替换为飞书APP_ID" \
-  --app-secret "替换为飞书APP_SECRET" \
-  --redirect-uri "http://localhost:8080/callback"
+python3 scripts/feishu_mcp_manager.py prepare --clients all --scope project
 ```
 
-凭证配置文件为 `scripts/feishu_config.json`，文件权限为 `0600`，已被 `.gitignore` 忽略。token 默认存放在 `~/.feishu-remote-mcp/token.json`。
-
-## 客户端适配
-
-默认 `--clients all` 会处理：
-
-- Claude Code：项目级 `.mcp.json`，使用 `headersHelper` 动态生成 headers；先运行 `prepare` 完成授权，之后 Claude Code 连接时可自动 refresh。
-- Cursor：项目级 `.cursor/mcp.json`，写入静态 headers；每次需要飞书 MCP 前再次运行 `prepare` 刷新并回填。
-- Kiro：项目级 `.kiro/settings/mcp.json`，写入静态 headers；每次需要飞书 MCP 前再次运行 `prepare` 刷新并回填。
-- Codex：用户级 `~/.codex/config.toml`，写入静态 headers；每次需要飞书 MCP 前再次运行 `prepare` 刷新并回填。
-
-如只配置某些客户端：
+## 常用命令
 
 ```bash
-python3 feishu-remote-mcp/scripts/feishu_mcp_manager.py prepare --clients claude,cursor,kiro
+# 查看当前状态（token 是否有效、凭证路径等）
+python3 scripts/feishu_mcp_manager.py status
+
+# 只配置指定客户端
+python3 scripts/feishu_mcp_manager.py prepare --clients claude,cursor,kiro --scope project
+
+# 强制浏览器重新授权
+python3 scripts/feishu_mcp_manager.py prepare --force-reauth --clients all --scope project
 ```
 
-## 运行状态
+## 配置写入位置
 
-查看本地状态：
+项目级（`--scope project`）：
 
-```bash
-python3 feishu-remote-mcp/scripts/feishu_mcp_manager.py status
-```
+- Claude Code：`<project-root>/.mcp.json`（使用 `headersHelper` 动态 refresh，无需每次手动 prepare）
+- Cursor：`<project-root>/.cursor/mcp.json`
+- Kiro：`<project-root>/.kiro/settings/mcp.json`
+- Codex：`~/.codex/config.toml`
 
-强制重新浏览器授权：
+用户级（`--scope user`）：`~/.claude.json` / `~/.cursor/mcp.json` / `~/.kiro/settings/mcp.json`
 
-```bash
-python3 feishu-remote-mcp/scripts/feishu_mcp_manager.py prepare --force-reauth
-```
+## 安全准则
+
+- 凭证（`APP_SECRET`、token）不提交到仓库，统一存 `scripts/feishu_config.json`（已 gitignore）
+- token 通过脚本刷新，不手动编辑
 
 ## 参考资料
 
-需要确认飞书 Remote MCP 地址、Header、权限、工具白名单，读取 `references/feishu_remote_mcp.md`。
+需要确认飞书 Remote MCP 地址、Header、权限、工具白名单：读取 `references/feishu_remote_mcp.md`
